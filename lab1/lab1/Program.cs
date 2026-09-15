@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -39,11 +40,19 @@ namespace LabWork
             if (!File.Exists(filePath))
             {
                 Console.WriteLine($"Ошибка: Файл '{filePath}' не найден.");
+                Console.WriteLine("Убедитесь, что файл находится в папке с исполняемым файлом (bin/Debug/netX.X/).");
                 return;
             }
             string text = GetText(filePath);
             var result = GetColors(text);
-            Console.WriteLine($"Количество найденных цветов: {result.Colors.Count}");
+            Console.WriteLine("Найденные цвета:");
+            foreach (var (word, color) in result.Words.Zip(result.Colors, (w, c) => (w, c)))
+            {
+                Console.WriteLine($"{word,-20} {color}");
+            }
+            string outputPath = Path.ChangeExtension(filePath, ".png");
+            CreateBookPortrait(result.Colors, outputPath);
+            Console.WriteLine($"\nИзображение сохранено в: {outputPath}");
         }
         static string GetText(string filePath)
         {
@@ -68,6 +77,38 @@ namespace LabWork
                 }
             }
             return (coloredWords, colors);
+        }
+        static void CreateBookPortrait(List<Color> colors, string outputPath, int columns = 0, int squareSize = 20)
+        {
+            if (colors == null || !colors.Any())
+            {
+                Console.WriteLine("Нет данных для создания изображения.");
+                return;
+            }
+            if (columns == 0)
+            {
+                columns = (int)Math.Ceiling(Math.Sqrt(colors.Count));
+            }
+            int rows = (int)Math.Ceiling((double)colors.Count / columns);
+            int imageWidth = columns * squareSize;
+            int imageHeight = rows * squareSize;
+            using (var bitmap = new Bitmap(imageWidth, imageHeight))
+            using (var graphics = Graphics.FromImage(bitmap))
+            {
+                graphics.Clear(Color.White);
+                for (int i = 0; i < colors.Count; i++)
+                {
+                    int row = i / columns;
+                    int col = i % columns;
+                    int x = col * squareSize;
+                    int y = row * squareSize;
+                    using (var brush = new SolidBrush(colors[i]))
+                    {
+                        graphics.FillRectangle(brush, x, y, squareSize, squareSize);
+                    }
+                }
+                bitmap.Save(outputPath, ImageFormat.Png);
+            }
         }
     }
 }
